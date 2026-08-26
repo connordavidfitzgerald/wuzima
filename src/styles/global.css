@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+/* Bradford Mono LL is a licensed face — drop the woff2 files into
+   public/fonts/ and these @font-face rules pick them up. Until then the
+   stack falls through to the system monospace. */
+@font-face {
+    font-family: "Bradford Mono LL";
+    src: url("/fonts/BradfordMonoLL-Regular.otf") format("opentype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@theme {
+    --color-cream: #f5eee4;
+    --color-olive: #606214;
+    --color-saffron: #feb900;
+    --color-ink: #000000;
+
+    /* Height of the fixed footer. Drives both the footer itself and the
+       transparent spacer that reveals it, so the two cannot drift. */
+    --spacing-footer: 161px;
+
+    --font-mono: "Bradford Mono LL", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+html {
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Text links underline themselves with the ornamental rule. GSAP drives the
+   left-to-right wipe on hover (see RuleLink.astro); this only lays the svg out
+   and hides it until the script takes over, so it cannot flash in on load. */
+.rule-link {
+    position: relative;
+    display: inline-block;
+}
+
+.rule-link__mark {
+    position: absolute;
+    top: 1.25em;
+    left: 0;
+    width: 100%;
+    height: auto;
+    pointer-events: none;
+    clip-path: inset(0% 100% 0% 0%);
+}
+
+/* Offerings accordion. The plus/minus marks are swapped from CSS so the state
+   stays correct with JS disabled. `is-closing` flips them back at the start of
+   the collapse rather than at the end, since <details> stays open until the
+   tween lands. */
+.accordion__summary {
+    list-style: none;
+}
+
+.accordion__summary::-webkit-details-marker {
+    display: none;
+}
+
+.accordion__mark-minus,
+.accordion[open]:not(.is-closing) .accordion__mark-plus {
+    opacity: 0;
+}
+
+.accordion[open]:not(.is-closing) .accordion__mark-minus {
+    opacity: 1;
+}
+
+.accordion__panel {
+    overflow: hidden;
+}

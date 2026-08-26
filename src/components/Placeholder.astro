@@ -1,0 +1,16 @@
+---
+interface Props {
+  label: string;
+  ratio: string;
+  class?: string;
+}
+
+const { label, ratio, class: className = "" } = Astro.props;
+---
+
+<div
+  class={`flex items-center justify-center bg-ink/5 outline outline-ink/15 ${className}`}
+  style={`aspect-ratio: ${ratio};`}
+>
+  <span class="text-[10px] tracking-[0.02em] text-ink/40 uppercase">{label}</span>
+</div>

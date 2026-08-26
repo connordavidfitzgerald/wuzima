@@ -1,0 +1,61 @@
+---
+/* Image inside a fixed-ratio window that drifts a little slower than the page.
+   The wrapper crops; the image is scaled just enough to cover the drift, so no
+   edge is ever exposed at either end of the scroll. */
+import { Image } from "astro:assets";
+import type { ImageMetadata } from "astro";
+
+interface Props {
+    src: ImageMetadata;
+    alt: string;
+    /* Layout classes for the window — grid placement, width, aspect ratio. */
+    class?: string;
+    /* Drift in percent of the window height, applied in both directions. */
+    amount?: number;
+}
+
+const { src, alt, class: className = "", amount = 6 } = Astro.props;
+---
+
+<div class={`parallax overflow-hidden ${className}`} data-parallax={amount}>
+    <Image src={src} alt={alt} class="parallax__img h-[110%] w-[110%] object-cover" />
+</div>
+
+<script>
+    import gsap from "gsap";
+    import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+    gsap.registerPlugin(ScrollTrigger);
+
+    const media = gsap.matchMedia();
+
+    media.add("(prefers-reduced-motion: no-preference)", () => {
+        document.querySelectorAll<HTMLElement>(".parallax").forEach((frame) => {
+            const image = frame.querySelector<HTMLElement>(".parallax__img");
+            if (!image) return;
+
+            const amount = Number(frame.dataset.parallax) || 20;
+
+            /* Travelling `amount`% in each direction uncovers `amount`% of the
+               window at top and bottom, which a scale of 1 + 2×amount fills. */
+            gsap.set(image, { scale: 1 + (amount * 2) / 100, willChange: "transform" });
+
+            gsap.fromTo(
+                image,
+                { yPercent: -amount },
+                {
+                    yPercent: amount,
+                    ease: "none",
+                    scrollTrigger: {
+                        trigger: frame,
+                        start: "top bottom",
+                        end: "bottom top",
+                        scrub: true,
+                    },
+                },
+            );
+        });
+
+        return () => gsap.set(".parallax__img", { clearProps: "transform,willChange" });
+    });
+</script>

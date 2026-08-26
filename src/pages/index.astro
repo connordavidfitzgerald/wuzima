@@ -1,0 +1,24 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Header from "../components/Header.astro";
+import Hero from "../components/Hero.astro";
+import Experience from "../components/Experience.astro";
+import Impact from "../components/Impact.astro";
+import Contact from "../components/Contact.astro";
+import Footer from "../components/Footer.astro";
+---
+
+<Layout>
+  <Header />
+  <main class="relative z-10">
+    <Hero />
+    <Experience />
+    <Impact />
+    <Contact />
+  </main>
+  {/* Transparent tail that scrolls the footer into view. It sits outside
+      <main> and ignores pointer events so the fixed footer beneath it stays
+      clickable. */}
+  <div class="h-footer pointer-events-none" aria-hidden="true"></div>
+  <Footer />
+</Layout>

@@ -1,0 +1,18 @@
+---
+import Mark from "./Mark.astro";
+import RuleLink from "./RuleLink.astro";
+---
+
+<header class="fixed inset-x-0 top-0 z-50">
+    <div class="flex items-start justify-between px-5 md:px-10 md:pt-10 pt-5">
+        <a href="/" aria-label="Wuzima — accueil" class="block">
+            <Mark class="h-10 w-7 text-ink" />
+        </a>
+        <RuleLink
+            href="#contact"
+            class="text-[11px] tracking-[0.01em] text-ink md:text-xs"
+        >
+            Book
+        </RuleLink>
+    </div>
+</header>

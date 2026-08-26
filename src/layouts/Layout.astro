@@ -1,0 +1,51 @@
+---
+import "lenis/dist/lenis.css";
+import "../styles/global.css";
+
+interface Props {
+    title?: string;
+    description?: string;
+}
+
+const {
+    title = "Wuzima — L’art de nourrir l’humain",
+    description = "Des expériences culinaires d’exception, pensées pour rassembler, célébrer et prendre soin.",
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="description" content={description} />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <title>{title}</title>
+    </head>
+    <body class="bg-cream font-mono text-ink antialiased">
+        <slot />
+        <script>
+            import gsap from "gsap";
+            import { ScrollTrigger } from "gsap/ScrollTrigger";
+            import Lenis from "lenis";
+
+            gsap.registerPlugin(ScrollTrigger);
+
+            /* Smooth scrolling, driven off GSAP's ticker so Lenis and every
+               ScrollTrigger advance on the same frame — running Lenis on its
+               own rAF loop makes scrubbed animations lag a frame behind. */
+            if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                const lenis = new Lenis({
+                    /* Anchor links (#contact) are handed to Lenis so they ease
+                       instead of jumping past the smoothed scroll position. */
+                    anchors: true,
+                });
+
+                lenis.on("scroll", ScrollTrigger.update);
+
+                gsap.ticker.add((time) => lenis.raf(time * 1000));
+                gsap.ticker.lagSmoothing(0);
+            }
+        </script>
+    </body>
+</html>

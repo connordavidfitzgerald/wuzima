@@ -1,0 +1,69 @@
+---
+// Text link whose underline is the ornamental rule, drawn left-to-right on hover.
+// Renders an <a> when given an href, otherwise a <button>.
+import Rule from "./Rule.astro";
+
+interface Props {
+    href?: string;
+    class?: string;
+    [key: string]: unknown;
+}
+
+const { href, class: className = "", ...rest } = Astro.props;
+const Tag = href ? "a" : "button";
+---
+
+<Tag href={href} class:list={["rule-link", className]} {...rest}>
+    <slot />
+    <Rule class="rule-link__mark" />
+</Tag>
+
+<script>
+    import gsap from "gsap";
+
+    // Astro hoists and dedupes this script, so it runs once for the whole page
+    // no matter how many RuleLinks are on it.
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    const HIDDEN_LEFT = "inset(0% 100% 0% 0%)";
+    const SHOWN = "inset(0% 0% 0% 0%)";
+    const HIDDEN_RIGHT = "inset(0% 0% 0% 100%)";
+
+    document.querySelectorAll<HTMLElement>(".rule-link").forEach((link) => {
+        const mark = link.querySelector<SVGElement>(".rule-link__mark");
+        if (!mark) return;
+
+        let tween: gsap.core.Tween | undefined;
+        const duration = () => (reduceMotion.matches ? 0 : 0.3);
+
+        // Draws in from the left edge.
+        const draw = () => {
+            tween?.kill();
+            tween = gsap.fromTo(
+                mark,
+                { clipPath: gsap.getProperty(mark, "clipPath") || HIDDEN_LEFT },
+                { clipPath: SHOWN, duration: duration(), ease: "power3.out" },
+            );
+        };
+
+        // Leaves the way it came in — the line keeps travelling right and off
+        // the end rather than retracting, so a quick in-and-out reads as one
+        // continuous stroke.
+        const erase = () => {
+            tween?.kill();
+            tween = gsap.to(mark, {
+                clipPath: HIDDEN_RIGHT,
+                duration: duration() * 0.85,
+                ease: "power3.in",
+                onComplete: () => gsap.set(mark, { clipPath: HIDDEN_LEFT }),
+            });
+        };
+
+        gsap.set(mark, { clipPath: HIDDEN_LEFT });
+
+        link.addEventListener("mouseenter", draw);
+        link.addEventListener("mouseleave", erase);
+        link.addEventListener("focus", draw);
+        link.addEventListener("blur", erase);
+    });
+</script>
