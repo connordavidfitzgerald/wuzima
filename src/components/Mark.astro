@@ -1,5 +1,6 @@
 ---
-// Placeholder for the Wuzima wordmark glyph — swap for the exported SVG.
+// The Wuzima glyph. Sized by the `class` prop — the width/height attributes
+// below are only the intrinsic fallback, so pass a height and let width follow.
 interface Props {
     class?: string;
 }
@@ -8,6 +9,7 @@ const { class: className = "" } = Astro.props;
 ---
 
 <svg
+    class={className}
     width="48"
     height="68"
     viewBox="0 0 48 68"

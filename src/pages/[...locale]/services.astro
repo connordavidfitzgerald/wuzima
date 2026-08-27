@@ -1,0 +1,111 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+import RuleLink from "../../components/RuleLink.astro";
+import ParallaxImage from "../../components/ParallaxImage.astro";
+import { localePaths, localizePath, type Lang } from "../../i18n";
+import { getContent, text } from "../../lib/content";
+
+export const getStaticPaths = localePaths;
+
+const { lang } = Astro.props as { lang: Lang };
+const { services } = await getContent(lang);
+
+/* Each experience is a spread that alternates which side the photograph takes,
+   starting on the left — so the alternation follows from an experience's place
+   in the list rather than from a table that has to be kept as long as the list
+   is. Both sides are placed on the page's ten columns, four wide, so they
+   always meet at the same gutter however the page narrows. The `md` pair is the
+   same spread on wider halves — five columns and five — so the alternation
+   survives on a tablet instead of collapsing into one left-flushed column.
+
+   Placement is layout, not copy, so it stays here; only the crop is authored,
+   because which of the two shapes a photograph is cut to is a decision about
+   the photograph. */
+const experiences = (services?.items ?? []).map((item, index) => {
+    const imageLeft = index % 2 === 0;
+
+    return {
+        title: text(item.title),
+        body: text(item.body),
+        image: item.image,
+        ratio: item.ratio === "square" ? "aspect-square" : "aspect-[520/728]",
+        mdStart: imageLeft ? "md:col-start-1" : "md:col-start-6",
+        mdTextStart: imageLeft ? "md:col-start-6" : "md:col-start-1",
+        start: imageLeft ? "lg:col-start-1" : "lg:col-start-7",
+        textStart: imageLeft ? "lg:col-start-6" : "lg:col-start-2",
+        /* Numbered on the page rather than in the copy — the sequence is the
+           same in every language. */
+        index: `( ${String(index + 1).padStart(2, "0")} )`,
+    };
+});
+---
+
+<Layout title={text(services?.seo?.title)} description={text(services?.seo?.description)}>
+    <Header />
+
+    {
+        /* `flex flex-col` stops the first heading's top margin collapsing out
+        through <main>, which would start the cream curtain below the masthead
+        and let the fixed footer show through the gap. */
+    }
+    <main class="relative z-10 flex flex-col bg-cream px-gutter pb-u4">
+        <h1 data-reveal class="mx-auto mt-u2 max-w-[17ch] text-center text-display uppercase">
+            {text(services?.heading)}
+        </h1>
+
+        {
+            experiences.map(
+                ({ index, title, body, image, ratio, start, textStart, mdStart, mdTextStart }) => (
+                    <article class="mt-u4 md:grid-10 md:items-center">
+                        <ParallaxImage
+                            image={image}
+                            widths={[712, 1424]}
+                            sizes="(min-width: 1024px) 38vw, 34rem"
+                            class:list={[
+                                ratio,
+                                "w-full md:mx-0 md:max-w-none md:col-span-5 md:row-start-1 lg:col-span-4",
+                                mdStart,
+                                start,
+                            ]}
+                        />
+
+                        <div
+                            class:list={[
+                                "mt-u2 max-w-[60ch] md:col-span-5 md:row-start-1 md:mt-0 md:max-w-none lg:col-span-4 xl:col-span-3",
+                                mdTextStart,
+                                textStart,
+                            ]}
+                        >
+                            <p class="text-label">{index}</p>
+                            <h2 data-reveal class="mt-u1 text-display2 uppercase">{title}</h2>
+                            <p class="mt-u1 text-body">{body}</p>
+                        </div>
+                    </article>
+                ),
+            )
+        }
+
+        <div class="mt-u4">
+            <div class="mx-auto w-full max-w-[60ch]">
+                <p class="text-center text-display2 uppercase">
+                    {text(services?.closing)}
+                </p>
+
+                <p class="mt-u2 text-center">
+                    <RuleLink
+                        href={localizePath("/contact", lang)}
+                        class="text-copy uppercase tracking-[0.02em]"
+                    >
+                        {text(services?.cta)}
+                    </RuleLink>
+                </p>
+            </div>
+        </div>
+    </main>
+
+    {/* Transparent tail that scrolls the fixed footer into view. */}
+    <div class="h-footer pointer-events-none" aria-hidden="true"></div>
+    <Footer />
+</Layout>

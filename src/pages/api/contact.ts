@@ -4,12 +4,36 @@ import { Resend } from "resend";
 // Runs on demand; the rest of the site stays prerendered.
 export const prerender = false;
 
-const FIELD_LABELS: Record<string, string> = {
-    nom: "Nom",
-    organisation: "Organisation",
-    email: "Email",
-    tel: "Téléphone",
-};
+/* The site is bilingual, so the form posts the locale it was rendered in and
+   the confirmation goes back out in that language. The enquiry to the team is
+   labelled the same way, so whoever reads it can tell at a glance which side of
+   the site it came from. */
+const COPY = {
+    fr: {
+        fields: { nom: "Nom", organisation: "Organisation", email: "Courriel", tel: "Téléphone" },
+        services: "Services",
+        subject: (name: string) => `Nouvelle demande — ${name}`,
+        heading: "Nouvelle demande",
+        confirmationSubject: "Merci pour votre demande — Wuzima",
+        confirmation: (name: string) => `<p>Bonjour ${name},</p>
+<p>Merci pour votre demande. Notre équipe vous répondra dans les 24 heures.</p>
+<p>À bientôt,<br />L’équipe Wuzima</p>`,
+    },
+    en: {
+        fields: { nom: "Name", organisation: "Organization", email: "Email", tel: "Phone" },
+        services: "Services",
+        subject: (name: string) => `New enquiry — ${name}`,
+        heading: "New enquiry",
+        confirmationSubject: "Thank you for your enquiry — Wuzima",
+        confirmation: (name: string) => `<p>Hello ${name},</p>
+<p>Thank you for your enquiry. Our team will get back to you within 24 hours.</p>
+<p>Speak soon,<br />The Wuzima team</p>`,
+    },
+} as const;
+
+type Lang = keyof typeof COPY;
+
+const isLang = (value: string): value is Lang => value in COPY;
 
 const REQUIRED_FIELDS = ["nom", "email", "tel"] as const;
 
@@ -60,10 +84,13 @@ export const POST: APIRoute = async ({ request }) => {
     const services = form.getAll("service").map(String).filter(Boolean);
     const name = value("nom");
 
-    const rows = Object.entries(FIELD_LABELS)
-        .map(([key, label]) => [label, value(key)] as const)
+    const requested = value("lang");
+    const copy = COPY[isLang(requested) ? requested : "fr"];
+
+    const rows: [string, string][] = Object.entries(copy.fields)
+        .map(([key, label]): [string, string] => [label, value(key)])
         .filter(([, entry]) => entry !== "")
-        .concat(services.length > 0 ? [["Services", services.join(", ")] as const] : []);
+        .concat(services.length > 0 ? [[copy.services, services.join(", ")]] : []);
 
     const resend = new Resend(apiKey);
 
@@ -73,8 +100,8 @@ export const POST: APIRoute = async ({ request }) => {
             from,
             to,
             replyTo: email,
-            subject: `Nouvelle demande — ${name}`,
-            html: `<h2>Nouvelle demande</h2><table cellpadding="6">${rows
+            subject: copy.subject(name),
+            html: `<h2>${copy.heading}</h2><table cellpadding="6">${rows
                 .map(
                     ([label, entry]) =>
                         `<tr><td><strong>${escapeHtml(label)}</strong></td><td>${escapeHtml(entry)}</td></tr>`,
@@ -92,10 +119,8 @@ export const POST: APIRoute = async ({ request }) => {
             from,
             to: email,
             replyTo: to,
-            subject: "Merci pour votre demande — Wuzima",
-            html: `<p>Bonjour ${escapeHtml(name)},</p>
-<p>Merci pour votre demande. Notre équipe vous répondra dans les 24 heures.</p>
-<p>À bientôt,<br />L’équipe Wuzima</p>`,
+            subject: copy.confirmationSubject,
+            html: copy.confirmation(escapeHtml(name)),
         });
 
         if (confirmation.error) {

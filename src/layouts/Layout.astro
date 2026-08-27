@@ -1,51 +1,200 @@
 ---
+import { ClientRouter } from "astro:transitions";
 import "lenis/dist/lenis.css";
 import "../styles/global.css";
+import {
+    defaultLang,
+    getLangFromUrl,
+    langs,
+    languages,
+    localizePath,
+    toRoutePath,
+} from "../i18n";
+import { getContent, text } from "../lib/content";
 
 interface Props {
     title?: string;
     description?: string;
 }
 
+const lang = getLangFromUrl(Astro.url);
+const route = toRoutePath(Astro.url);
+
+/* Pages pass their own; the home page's stands in for anything that does not,
+   so a new page is never published nameless. */
+const { home } = await getContent(lang);
 const {
-    title = "Wuzima — L’art de nourrir l’humain",
-    description = "Des expériences culinaires d’exception, pensées pour rassembler, célébrer et prendre soin.",
+    title = text(home?.seo?.title),
+    description = text(home?.seo?.description),
 } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="fr">
+<html lang={languages[lang].htmlLang}>
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="description" content={description} />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+        {
+            /* Tells search engines the two locales are the same page. Written
+               relative rather than absolute so nothing has to know the
+               production domain at build time. */
+        }
+        {
+            langs.map((code) => (
+                <link rel="alternate" hreflang={code} href={localizePath(route, code)} />
+            ))
+        }
+        <link rel="alternate" hreflang="x-default" href={localizePath(route, defaultLang)} />
+
         <title>{title}</title>
+
+        {
+            /* Swaps the document in place on navigation instead of tearing it
+               down, which is what lets one page dissolve into the next — the
+               animation itself is in global.css, on ::view-transition-*.
+
+               Nothing about it is free. A module script is evaluated once for
+               the session and never again, so nothing on the page can be set up
+               at the top level of one: every script here and in the components
+               binds its work on `astro:page-load` and lets go of it on
+               `astro:before-swap`. */
+        }
+        <ClientRouter />
+
+        {
+            /* Headings are hidden until the reveal script has cut them into
+               lines. Where that script will never run, they are simply there. */
+        }
+        <noscript>
+            <style>
+                [data-reveal] {
+                    visibility: visible !important;
+                }
+            </style>
+        </noscript>
     </head>
     <body class="bg-cream font-mono text-ink antialiased">
         <slot />
         <script>
             import gsap from "gsap";
             import { ScrollTrigger } from "gsap/ScrollTrigger";
+            import { SplitText } from "gsap/SplitText";
             import Lenis from "lenis";
 
-            gsap.registerPlugin(ScrollTrigger);
+            gsap.registerPlugin(ScrollTrigger, SplitText);
+
+            const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
             /* Smooth scrolling, driven off GSAP's ticker so Lenis and every
                ScrollTrigger advance on the same frame — running Lenis on its
-               own rAF loop makes scrubbed animations lag a frame behind. */
-            if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+               own rAF loop makes scrubbed animations lag a frame behind.
+
+               This half runs once for the session, not once per page: the view
+               transition swaps the body under Lenis and leaves it attached to
+               the same window, so a second instance would only fight the first. */
+            if (!reduceMotion.matches) {
                 const lenis = new Lenis({
                     /* Anchor links (#contact) are handed to Lenis so they ease
                        instead of jumping past the smoothed scroll position. */
                     anchors: true,
                 });
 
+                /* Handed out so a component that has to hold the page still
+                   can stop it — the phone menu covers the page with a fixed
+                   sheet, which Lenis would otherwise happily scroll behind. */
+                window.__lenis = lenis;
+
                 lenis.on("scroll", ScrollTrigger.update);
 
                 gsap.ticker.add((time) => lenis.raf(time * 1000));
                 gsap.ticker.lagSmoothing(0);
+
+                /* No page load means no scroll reset. Lenis holds the smoothed
+                   position across the swap, so the new page has to be taken
+                   back to the top by hand — immediately, before it is painted. */
+                document.addEventListener("astro:after-swap", () =>
+                    lenis.scrollTo(0, { immediate: true, force: true }),
+                );
             }
+
+            /* ---- Heading reveal ------------------------------------------
+               Every [data-reveal] heading is cut into lines, each line dropped
+               into a wrapper that clips it, and the lines walked up into place
+               a beat apart. `mask: "lines"` builds the wrappers; the layout
+               keeps its exact height either way, since the wrapper is a clone
+               of the line it holds.
+
+               `yPercent: 115` rather than 100 because the wrapper is opened up
+               below the line box to clear the ornamental rule — see the note on
+               .reveal__line-mask in global.css. */
+            let context: gsap.Context | undefined;
+            let splits: SplitText[] = [];
+
+            /* A heading only makes its entrance once. Re-splitting on a resize
+               is a measurement, not a cue to play it again. */
+            const played = new WeakSet<Element>();
+
+            function reveal() {
+                const headings = gsap.utils.toArray<HTMLElement>("[data-reveal]");
+                if (!headings.length) return;
+
+                if (reduceMotion.matches) {
+                    gsap.set(headings, { visibility: "visible" });
+                    return;
+                }
+
+                context = gsap.context(() => {
+                    headings.forEach((heading) => {
+                        splits.push(
+                            SplitText.create(heading, {
+                                type: "lines",
+                                mask: "lines",
+                                linesClass: "reveal__line",
+                                /* Re-cuts the heading when the line breaks
+                                   move, so a rewrapped line is never left
+                                   masked at the width it was measured at. */
+                                autoSplit: true,
+                                onSplit(self) {
+                                    gsap.set(heading, { visibility: "visible" });
+                                    if (played.has(heading)) return;
+
+                                    return gsap.from(self.lines, {
+                                        yPercent: 115,
+                                        duration: 0.9,
+                                        ease: "power3.out",
+                                        stagger: 0.08,
+                                        /* Headings below the fold wait their
+                                           turn; one already in view fires on
+                                           the first refresh, so the same
+                                           declaration covers both. */
+                                        scrollTrigger: {
+                                            trigger: heading,
+                                            start: "top 88%",
+                                            once: true,
+                                        },
+                                        onStart: () => played.add(heading),
+                                    });
+                                },
+                            }),
+                        );
+                    });
+                });
+            }
+
+            document.addEventListener("astro:page-load", reveal);
+
+            /* The outgoing page's tweens and triggers are torn down before its
+               DOM goes, and the splits with them — autoSplit leaves a resize
+               observer behind otherwise. */
+            document.addEventListener("astro:before-swap", () => {
+                splits.forEach((split) => split.revert());
+                splits = [];
+                context?.revert();
+                context = undefined;
+            });
         </script>
     </body>
 </html>

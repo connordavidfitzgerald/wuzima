@@ -1,0 +1,133 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+import RuleLink from "../../components/RuleLink.astro";
+import ParallaxImage from "../../components/ParallaxImage.astro";
+import Rule from "../../components/Rule.astro";
+import { localePaths, localizePath, type Lang } from "../../i18n";
+import { getContent, text } from "../../lib/content";
+
+export const getStaticPaths = localePaths;
+
+const { lang } = Astro.props as { lang: Lang };
+const { home } = await getContent(lang);
+---
+
+<Layout title={text(home?.seo?.title)} description={text(home?.seo?.description)}>
+    <Header />
+
+    {
+        /* The page is one screen at both ends of the range, held there
+        differently at each.
+
+        From md every gap is a multiple of the gutter and, with the masthead,
+        they add up to the artboard height exactly — `min-h` only has to stop a
+        short viewport letting the footer ride up, and `justify-between` has
+        nothing left to distribute.
+
+        On a phone the blocks are drawn optically centred in what is left of the
+        screen, with the standfirst pair sitting on the bottom margin. That is
+        `my-auto` on the group below rather than `justify-center`: auto margins
+        stop at zero when the screen runs out, where centring would push the
+        heading back up under the masthead and clip it. */
+    }
+    <main
+        class="relative z-10 flex flex-col bg-cream px-gutter pt-u1 pb-gutter min-h-[calc(100svh-var(--spacing-header))] sm:gap-u2 sm:pt-u2 sm:pb-u2 sm:justify-between md:gap-0"
+    >
+        {
+            /* Everything above the standfirst pair, as one block so it can be
+            centred against the screen as a whole. From sm it dissolves — the
+            three blocks become children of <main> again and the composition is
+            the drawn one, unchanged. */
+        }
+        <div class="my-auto flex flex-col gap-u2 sm:contents">
+            {
+                /* The last word carries the ornamental rule, drawn rather than
+                hovered. It is one inline-block so the rule measures that word and
+                the word alone, and so it cannot be broken across a wrapped line. */
+            }
+            <h1 data-reveal class="mx-auto max-w-[17ch] text-center text-display uppercase">
+                {text(home?.headingLead)}{" "}<span class="rule-accent"
+                    >{text(home?.headingAccent)}<Rule
+                        class="rule-accent__mark"
+                        preserveAspectRatio="none"
+                    /></span
+                >
+            </h1>
+
+            <div>
+                {
+                    /* The photograph is a fixed editorial size rather than a column
+                    span. Two columns only measures 336px at the artboard — held as
+                    a span it would shrink to a postage stamp on a laptop, so the
+                    width is stated once and the margins take up the slack.
+
+                    It is drawn wider on a phone, where it is the only thing on its
+                    line and the two standfirst lines have gone to the foot of the
+                    page: 268px against the 240px it holds from sm, where they come
+                    back alongside it and need the margins. */
+                }
+                <div class="flex items-center justify-center sm:justify-between sm:gap-u1">
+                    <p class="hidden flex-1 text-label md:text-body uppercase sm:block">
+                        {text(home?.eyebrowLeft)}
+                    </p>
+
+                    <ParallaxImage
+                        image={home?.chef}
+                        widths={[336, 672]}
+                        sizes="(min-width: 40rem) 240px, 268px"
+                        loading="eager"
+                        class="aspect-[336/420] w-full max-w-[16.75rem] shrink-0 sm:max-w-[15rem]"
+                    />
+
+                    <p class="hidden flex-1 text-label md:text-body uppercase sm:block text-right">
+                        {text(home?.eyebrowRight)}
+                    </p>
+                </div>
+            </div>
+
+            {
+                /* 44.5rem is the drawn four-column span; centred, it lands on the
+                same edges the grid would have given it and narrows with the page
+                instead of falling off a breakpoint. The ch cap runs alongside it
+                because body type stays at its 14px floor until about 1600px — at
+                the drawn width alone the line would reach 85 characters there. */
+            }
+            <div class="mx-auto w-full max-w-[44.5rem]">
+                <p class="mx-auto max-w-[74ch] pb-u2 text-center text-body">
+                    {text(home?.body)}
+                </p>
+
+                <p class="text-center">
+                    <RuleLink href={localizePath("/about", lang)} class="text-copy uppercase">
+                        {text(home?.cta)}
+                    </RuleLink>
+                </p>
+            </div>
+        </div>
+
+        {
+            /* The two standfirst lines sit out on the page margins, centred
+            against the photograph between them, from sm up — the photograph is
+            narrow enough there that the margins beside it still carry a line.
+
+            A phone has no margin to put them in, so the pair drops to the foot
+            of the screen and holds the bottom of the composition instead: the
+            same two ends of the same line, read across the page rather than
+            across the picture. */
+        }
+        <div class="flex items-baseline justify-between text-label uppercase sm:hidden">
+            <p>{text(home?.eyebrowLeft)}</p>
+            <p>{text(home?.eyebrowRight)}</p>
+        </div>
+    </main>
+
+    {
+        /* Transparent tail that scrolls the fixed footer into view. It sits
+        outside <main> and ignores pointer events so the footer beneath it
+        stays clickable. */
+    }
+    <div class="h-footer pointer-events-none" aria-hidden="true"></div>
+    <Footer />
+</Layout>

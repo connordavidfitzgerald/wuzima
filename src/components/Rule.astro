@@ -2,9 +2,14 @@
 // Ornamental rule — sits under section labels and emphasised words.
 interface Props {
     class?: string;
+    /* "none" stretches the drawing to whatever box it is given instead of
+       scaling it. The rule is a long horizontal stroke, so stretching only
+       lengthens its wobbles — but it lets the caller set the stroke weight
+       rather than inheriting whatever the width happens to imply. */
+    preserveAspectRatio?: string;
 }
 
-const { class: className = "" } = Astro.props;
+const { class: className = "", preserveAspectRatio } = Astro.props;
 ---
 
 <svg
@@ -14,6 +19,7 @@ const { class: className = "" } = Astro.props;
     fill="currentColor"
     xmlns="http://www.w3.org/2000/svg"
     class={className}
+    preserveAspectRatio={preserveAspectRatio}
     aria-hidden="true"
 >
     <path

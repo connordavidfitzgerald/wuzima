@@ -1,0 +1,46 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+import ContactForm from "../../components/ContactForm.astro";
+import ServiceDirectory from "../../components/ServiceDirectory.astro";
+import { localePaths, type Lang } from "../../i18n";
+import { getContent, text } from "../../lib/content";
+
+export const getStaticPaths = localePaths;
+
+const { lang } = Astro.props as { lang: Lang };
+const { contact } = await getContent(lang);
+---
+
+<Layout title={text(contact?.seo?.title)} description={text(contact?.seo?.description)}>
+    <Header />
+
+    {
+        /* One screen, like the home page: the heading and form are spaced off
+        the masthead, and the directory is pushed to the foot by `mt-auto` so
+        it holds the bottom margin however tall the form ends up. */
+    }
+    <main
+        class="relative z-10 flex min-h-[calc(100svh-var(--spacing-header))] flex-col bg-cream px-gutter pb-u1"
+    >
+        <h1 data-reveal class="mx-auto mt-u2 max-w-[21ch] text-center text-display uppercase">
+            {text(contact?.heading)}
+        </h1>
+
+        {
+            /* 44.5rem is the drawn four-column span; centred, it lands on
+            exactly the column edges the grid gave it, and narrows with the page
+            rather than stepping at a breakpoint. */
+        }
+        <div class="mx-auto mt-u2 w-full max-w-[44.5rem]">
+            <ContactForm />
+        </div>
+
+        <ServiceDirectory class="mt-u4 lg:mt-auto lg:pt-u4" />
+    </main>
+
+    {/* Transparent tail that scrolls the fixed footer into view. */}
+    <div class="h-footer pointer-events-none" aria-hidden="true"></div>
+    <Footer />
+</Layout>

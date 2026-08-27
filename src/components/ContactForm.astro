@@ -1,0 +1,202 @@
+---
+import RuleLink from "./RuleLink.astro";
+import { getLangFromUrl } from "../i18n";
+import { getContent, lines, text } from "../lib/content";
+
+const lang = getLangFromUrl(Astro.url);
+const { form } = await getContent(lang);
+
+/* The inputs themselves are fixed — the endpoint reads them by name — so only
+   their labels come from the CMS. */
+const fields: {
+    name: string;
+    label: string;
+    type: astroHTML.JSX.HTMLInputTypeAttribute;
+    autocomplete: HTMLInputElement["autocomplete"];
+    required: boolean;
+}[] = [
+    { name: "nom", label: text(form?.labelName), type: "text", autocomplete: "name", required: true },
+    {
+        name: "organisation",
+        label: text(form?.labelOrganisation),
+        type: "text",
+        autocomplete: "organization",
+        required: false,
+    },
+    {
+        name: "email",
+        label: text(form?.labelEmail),
+        type: "email",
+        autocomplete: "email",
+        required: true,
+    },
+    { name: "tel", label: text(form?.labelTel), type: "tel", autocomplete: "tel", required: true },
+];
+
+const services = lines(form?.services);
+---
+
+{
+    /* The form runs on its own four-column subgrid — the same four columns it
+    occupies on the page — so the `Service:` legend and the options beside it
+    line up with the gutter rather than an invented indent.
+
+    The three result messages are carried on the element rather than baked into
+    the script, which is hoisted once for the whole site and so cannot know
+    which locale rendered the page. */
+}
+<form
+    class="contact-form"
+    data-sending={text(form?.statusSending)}
+    data-success={text(form?.statusSuccess)}
+    data-error={text(form?.statusError)}
+>
+    {
+        fields.map((field) => (
+            <div class="mb-[0.625rem]">
+                <label for={field.name} class="block text-label uppercase">
+                    {field.label}
+                </label>
+                <input
+                    id={field.name}
+                    name={field.name}
+                    type={field.type}
+                    autocomplete={field.autocomplete}
+                    required={field.required}
+                    class="field__input h-u1 w-full border-b border-ink/50 text-copy outline-none focus:border-ink"
+                />
+            </div>
+        ))
+    }
+
+    <fieldset class="mt-u1">
+        <legend class="sr-only">{text(form?.serviceLegend)}</legend>
+
+        <div class="grid grid-cols-4 gap-x-gutter">
+            <span class="text-label uppercase" aria-hidden="true">{text(form?.serviceLabel)}</span>
+
+            {
+                /* The options and the submit share one row, so the button lands
+                on the right edge of the form beside the last option rather
+                than on a line of its own. */
+            }
+            <div
+                class="col-span-4 col-start-1 mt-u1 flex items-end justify-between sm:col-span-3 sm:col-start-2 sm:mt-0"
+            >
+                <div>
+                    {services.map((service) => (
+                        <label class="group flex cursor-pointer items-baseline gap-1 text-label leading-[1.5]">
+                            <input
+                                type="checkbox"
+                                name="service"
+                                value={service}
+                                class="peer sr-only"
+                            />
+                            <span class="peer-checked:hidden">[ ]</span>
+                            <span class="hidden peer-checked:inline">[×]</span>
+                            <span class="group-hover:opacity-60 peer-focus-visible:underline">
+                                {service}
+                            </span>
+                        </label>
+                    ))}
+                </div>
+
+                <RuleLink type="submit" class="contact-form__submit shrink-0 text-label uppercase">
+                    {text(form?.submit)} &rarr;
+                </RuleLink>
+            </div>
+        </div>
+    </fieldset>
+
+    {/* Tells the endpoint which language to answer the visitor in. */}
+    <input type="hidden" name="lang" value={lang} />
+
+    {/* Honeypot — bots fill it in, humans never see it. */}
+    <input type="checkbox" name="botcheck" class="hidden" tabindex="-1" autocomplete="off" />
+
+    <p
+        class="contact-form__status mt-u1 hidden max-w-[40ch] text-label"
+        role="status"
+        aria-live="polite"
+    >
+    </p>
+</form>
+
+<script>
+    import gsap from "gsap";
+
+    const ENDPOINT = "/api/contact";
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    /* Bound once per page rather than once per load — a view transition brings
+       a new form with it and takes the old one, and its listeners, away. */
+    function bindContactForms() {
+        document.querySelectorAll<HTMLFormElement>(".contact-form").forEach((form) => {
+            const status = form.querySelector<HTMLElement>(".contact-form__status");
+            const submit = form.querySelector<HTMLButtonElement>(".contact-form__submit");
+            if (!status || !submit) return;
+
+            const messages = {
+                sending: form.dataset.sending ?? "",
+                success: form.dataset.success ?? "",
+                error: form.dataset.error ?? "",
+            };
+
+            const show = (message: string, tone: "pending" | "success" | "error") => {
+                status.textContent = message;
+                status.classList.remove("hidden");
+                status.classList.toggle("opacity-70", tone !== "error");
+
+                gsap.killTweensOf(status);
+                gsap.fromTo(
+                    status,
+                    { opacity: 0, y: 4 },
+                    {
+                        opacity: 1,
+                        y: 0,
+                        duration: reduceMotion.matches ? 0 : 0.5,
+                        ease: "power3.out",
+                    },
+                );
+            };
+
+            const hide = () => {
+                if (status.classList.contains("hidden")) return;
+                gsap.killTweensOf(status);
+                status.classList.add("hidden");
+            };
+
+            form.addEventListener("submit", async (event) => {
+                // The submit event only fires once native validation passes, so the
+                // required fields are still enforced before anything is sent.
+                event.preventDefault();
+
+                submit.disabled = true;
+                show(messages.sending, "pending");
+
+                try {
+                    const response = await fetch(ENDPOINT, {
+                        method: "POST",
+                        body: new FormData(form),
+                    });
+
+                    if (!response.ok) throw new Error(`Endpoint responded ${response.status}`);
+
+                    form.reset();
+                    show(messages.success, "success");
+                } catch (error) {
+                    console.error("Contact form submission failed:", error);
+                    show(messages.error, "error");
+                } finally {
+                    submit.disabled = false;
+                }
+            });
+
+            // Once they start filling it in again, the last result is stale.
+            form.addEventListener("input", hide);
+        });
+    }
+
+    document.addEventListener("astro:page-load", bindContactForms);
+</script>

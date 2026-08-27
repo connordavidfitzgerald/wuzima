@@ -1,0 +1,62 @@
+---
+import { getLangFromUrl } from "../i18n";
+import { getContent, lines, text } from "../lib/content";
+
+interface Props {
+    class?: string;
+}
+
+const { class: className = "" } = Astro.props;
+
+const { directory, settings } = await getContent(getLangFromUrl(Astro.url));
+
+const email = text(settings?.email);
+
+/* Column placement lives here rather than in the copy: it is layout, and it is
+   the same in both languages. */
+const starts = ["lg:col-start-1 2xl:col-start-2", "lg:col-start-4 2xl:col-start-4", "lg:col-start-7 2xl:col-start-6"];
+
+const columns = (directory?.columns ?? []).map((column, index) => ({
+    title: text(column.title),
+    items: lines(column.items),
+    /* Past the drawn three the placement repeats, so a fourth column added in
+       the Studio lands under the first rather than off the grid. */
+    start: starts[index % starts.length],
+}));
+---
+
+{
+    /* Directory of what Wuzima offers, sitting on the foot of the page. The
+    drawn row — a heading and four blocks two columns apiece — only has the
+    room for itself from 2xl. Below that the blocks widen to three columns and
+    wrap, then pair off, then stack, so the longest line here never has to set
+    itself in a 130px column. */
+}
+<div class:list={["grid-10 gap-y-u1 text-label", className]}>
+    <h2 class="col-span-10 col-start-1 uppercase 2xl:col-span-1 2xl:col-start-1">
+        {text(directory?.heading)}
+    </h2>
+
+    {
+        columns.map((column) => (
+            <div class:list={["col-span-10 col-start-1 sm:col-span-5 lg:col-span-3 2xl:col-span-2", column.start]}>
+                <h3 class="uppercase">{column.title}</h3>
+                <ul class="mt-[1.2em]">
+                    {column.items.map((item) => (
+                        <li>{item}</li>
+                    ))}
+                </ul>
+            </div>
+        ))
+    }
+
+    <p class="col-span-10 col-start-1 sm:col-span-5 lg:col-span-3 lg:col-start-1 2xl:col-span-2 2xl:col-start-9">
+        {text(directory?.questions)}
+        <span class="mt-[1.2em] block">
+            {text(directory?.emailBefore)} <a
+                href={`mailto:${email}`}
+                class="underline-offset-2 hover:underline">{email}</a
+            > {text(directory?.emailAfter)}
+        </span>
+    </p>
+</div>

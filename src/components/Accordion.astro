@@ -38,68 +38,74 @@ const { title, body } = Astro.props;
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-    document.querySelectorAll<HTMLDetailsElement>(".accordion").forEach((item) => {
-        const summary = item.querySelector<HTMLElement>(".accordion__summary");
-        const panel = item.querySelector<HTMLElement>(".accordion__panel");
-        if (!summary || !panel) return;
+    /* Bound once per page rather than once per load — a view transition brings
+       new rows with it and takes the old ones, and their listeners, away. */
+    function bindAccordions() {
+        document.querySelectorAll<HTMLDetailsElement>(".accordion").forEach((item) => {
+            const summary = item.querySelector<HTMLElement>(".accordion__summary");
+            const panel = item.querySelector<HTMLElement>(".accordion__panel");
+            if (!summary || !panel) return;
 
-        let tween: gsap.core.Tween | undefined;
-        const duration = () => (reduceMotion.matches ? 0 : 0.4);
+            let tween: gsap.core.Tween | undefined;
+            const duration = () => (reduceMotion.matches ? 0 : 0.4);
 
-        const expand = () => {
-            tween?.kill();
-            item.classList.remove("is-closing");
-            item.open = true;
-            tween = gsap.fromTo(
-                panel,
-                { height: 0, opacity: 0 },
-                {
-                    height: "auto",
-                    opacity: 1,
-                    duration: duration(),
-                    ease: "power3.inOut",
-                    // Hand the height back to the layout so the panel can
-                    // reflow if the text rewraps.
-                    onComplete: () => gsap.set(panel, { height: "auto" }),
-                },
-            );
-        };
+            const expand = () => {
+                tween?.kill();
+                item.classList.remove("is-closing");
+                item.open = true;
+                tween = gsap.fromTo(
+                    panel,
+                    { height: 0, opacity: 0 },
+                    {
+                        height: "auto",
+                        opacity: 1,
+                        duration: duration(),
+                        ease: "power3.inOut",
+                        // Hand the height back to the layout so the panel can
+                        // reflow if the text rewraps.
+                        onComplete: () => gsap.set(panel, { height: "auto" }),
+                    },
+                );
+            };
 
-        const collapse = () => {
-            tween?.kill();
-            item.classList.add("is-closing");
-            tween = gsap.to(panel, {
-                height: 0,
-                opacity: 0,
-                duration: duration() * 0.8,
-                ease: "power3.out",
-                onComplete: () => {
-                    item.open = false;
-                    item.classList.remove("is-closing");
-                    gsap.set(panel, { clearProps: "height,opacity" });
-                },
-            });
-        };
-
-        summary.addEventListener("click", (event) => {
-            // Drive <details> by hand so the collapse can finish animating
-            // before the browser hides the panel outright.
-            event.preventDefault();
-
-            if (item.open && !item.classList.contains("is-closing")) {
-                collapse();
-                return;
-            }
-
-            // Exclusive: opening one row closes whichever was open.
-            item.closest(".accordion-group")
-                ?.querySelectorAll<HTMLDetailsElement>(".accordion[open]")
-                .forEach((other) => {
-                    if (other !== item)
-                        other.querySelector<HTMLElement>(".accordion__summary")?.click();
+            const collapse = () => {
+                tween?.kill();
+                item.classList.add("is-closing");
+                tween = gsap.to(panel, {
+                    height: 0,
+                    opacity: 0,
+                    duration: duration() * 0.8,
+                    ease: "power3.out",
+                    onComplete: () => {
+                        item.open = false;
+                        item.classList.remove("is-closing");
+                        gsap.set(panel, { clearProps: "height,opacity" });
+                    },
                 });
+            };
 
-            expand();
+            summary.addEventListener("click", (event) => {
+                // Drive <details> by hand so the collapse can finish animating
+                // before the browser hides the panel outright.
+                event.preventDefault();
+
+                if (item.open && !item.classList.contains("is-closing")) {
+                    collapse();
+                    return;
+                }
+
+                // Exclusive: opening one row closes whichever was open.
+                item.closest(".accordion-group")
+                    ?.querySelectorAll<HTMLDetailsElement>(".accordion[open]")
+                    .forEach((other) => {
+                        if (other !== item)
+                            other.querySelector<HTMLElement>(".accordion__summary")?.click();
+                    });
+
+                expand();
+            });
         });
-    });
+    }
+
+    document.addEventListener("astro:page-load", bindAccordions);
 </script>

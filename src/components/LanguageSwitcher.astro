@@ -1,0 +1,42 @@
+---
+/* EN / FR pair. Each half points at the current page in the other locale, so
+   switching language holds your place on the site rather than dropping you on
+   the home page. The current one keeps its rule drawn, the way the nav link of
+   the current page does. */
+import RuleLink from "./RuleLink.astro";
+import { getLangFromUrl, langs, languages, localizePath, toRoutePath } from "../i18n";
+import { getContent, text } from "../lib/content";
+
+interface Props {
+    class?: string;
+}
+
+const { class: className = "" } = Astro.props;
+
+const lang = getLangFromUrl(Astro.url);
+const route = toRoutePath(Astro.url);
+const { settings } = await getContent(lang);
+
+/* Each half is announced in the language it switches to, so the pair is not
+   translated per locale — see the note on the fields in the Studio. */
+const switchTo = { fr: text(settings?.switchToFr), en: text(settings?.switchToEn) };
+---
+
+<nav class:list={["flex items-baseline gap-1 text-label uppercase", className]} aria-label={text(settings?.languageLabel)}>
+    {
+        langs.map((code, index) => (
+            <>
+                {index > 0 && <span aria-hidden="true">/</span>}
+                <RuleLink
+                    href={localizePath(route, code)}
+                    active={code === lang}
+                    hreflang={code}
+                    aria-current={code === lang ? "true" : undefined}
+                    aria-label={switchTo[code]}
+                >
+                    {languages[code].short}
+                </RuleLink>
+            </>
+        ))
+    }
+</nav>

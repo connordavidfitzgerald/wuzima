@@ -1,18 +1,118 @@
 ---
 import Mark from "./Mark.astro";
 import RuleLink from "./RuleLink.astro";
+import LanguageSwitcher from "./LanguageSwitcher.astro";
+import MobileMenu from "./MobileMenu.astro";
+import { getLangFromUrl, localizePath, toRoutePath } from "../i18n";
+import { getContent, text } from "../lib/content";
+
+const lang = getLangFromUrl(Astro.url);
+const { settings } = await getContent(lang);
+
+const links = [
+    { href: "/about", label: text(settings?.navAbout) },
+    { href: "/services", label: text(settings?.navServices) },
+    { href: "/contact", label: text(settings?.navContact) },
+];
+
+/* Trailing slashes and the index path both need to resolve, and so does the
+   locale prefix — compare on the route the URL points at, with the prefix
+   taken off, rather than on the raw pathname. */
+const path = toRoutePath(Astro.url).replace(/\/+$/, "") || "/";
 ---
 
-<header class="fixed inset-x-0 top-0 z-50">
-    <div class="flex items-start justify-between px-5 md:px-10 md:pt-10 pt-5">
-        <a href="/" aria-label="Wuzima — accueil" class="block">
-            <Mark class="h-10 w-7 text-ink" />
-        </a>
-        <RuleLink
-            href="#contact"
-            class="text-[11px] tracking-[0.01em] text-ink md:text-xs"
+{
+    /* Pinned to the top rather than fixed. Sticky keeps the masthead in the
+       document flow, so the page below it starts exactly where it did before —
+       there is no header height to measure and mirror as padding, and nothing
+       to keep in step when the block gets taller below md. */
+}
+<header class="sticky top-0 z-50 px-gutter pt-gutter">
+    {
+        /* The glyph is centred on the page rather than on the space between the
+        two link groups, so it is taken out of the row and positioned against
+        the full width. The row keeps the glyph's height so the block below it
+        starts at a predictable place. */
+    }
+    <div class="relative flex h-mark-block items-start justify-between">
+        {
+            /* The two ends of the row, each holding whichever version of itself
+            the width calls for. They are wrapped rather than set loose so
+            `justify-between` still sees exactly two things to push apart. */
+        }
+        <div class="flex items-baseline">
+            <nav
+                class="hidden gap-u1 text-label uppercase md:flex"
+                aria-label={text(settings?.navLabel)}
+            >
+                {
+                    links.map(({ href, label }) => (
+                        <RuleLink href={localizePath(href, lang)} active={path === href}>
+                            {label}
+                        </RuleLink>
+                    ))
+                }
+            </nav>
+
+            {
+                /* Opens the sheet in MobileMenu.astro, which carries the same
+                sections the nav beside it lists at md. A button rather than a
+                link: there is no page at the other end of it. */
+            }
+            <button
+                type="button"
+                data-menu-open
+                aria-controls="site-menu"
+                class="rule-link text-label uppercase md:hidden"
+            >
+                {text(settings?.navMenu)}
+            </button>
+        </div>
+
+        <a
+            href={localizePath("/", lang)}
+            aria-label={text(settings?.navHome)}
+            class="absolute top-0 left-1/2 flex -translate-x-1/2 flex-col items-center"
         >
-            Book
-        </RuleLink>
+            <Mark class="h-mark w-auto text-ink" />
+            <span class="mt-[0.875rem] text-label leading-[0.9] uppercase">Wuzima</span>
+        </a>
+
+        {
+            /* The booking link and the language pair share the right margin.
+
+            It points at /contact but is deliberately never marked active: the
+            nav already carries a Contact link, and marking both would draw two
+            rules for one page. This one is the call to action, so it keeps its
+            hover behaviour and lets the nav link show where you are. */
+        }
+        <div class="ml-auto flex items-baseline gap-u1">
+            <RuleLink href={localizePath("/contact", lang)} class="hidden text-label uppercase md:inline-block">
+                {text(settings?.navBook)}
+            </RuleLink>
+
+            {
+                /* The same link in the short wording the phone masthead is
+                drawn with — "Réservez" rather than "Réserver un événement",
+                which would run into the glyph. The menu sets it at full
+                length, where there is a line to spare for it. */
+            }
+            <RuleLink href={localizePath("/contact", lang)} class="text-label uppercase md:hidden">
+                {text(settings?.navBookShort)}
+            </RuleLink>
+
+            <div class="hidden md:block">
+                <LanguageSwitcher />
+            </div>
+        </div>
     </div>
+
 </header>
+
+{
+    /* The sheet the MENU button opens. It lives outside the masthead so its
+       own fixed positioning is not measured against a sticky parent, and it is
+       rendered on every page because the header is. */
+}
+<MobileMenu />
+

@@ -1,0 +1,231 @@
+---
+/* The phone menu. Below md the masthead has no room for the sections beside
+   the centred glyph, so they move behind a MENU button and open as a full
+   screen of their own.
+
+   It is drawn as a second masthead — the same gutter, the same glyph in the
+   same place — so opening it reads as the page turning over rather than a
+   panel arriving on top of it. The button that opens it lives in Header.astro;
+   this is only the sheet and the behaviour. */
+import Mark from "./Mark.astro";
+import RuleLink from "./RuleLink.astro";
+import LanguageSwitcher from "./LanguageSwitcher.astro";
+import { getLangFromUrl, localizePath, toRoutePath } from "../i18n";
+import { getContent, text } from "../lib/content";
+
+const lang = getLangFromUrl(Astro.url);
+const { settings } = await getContent(lang);
+
+/* The booking link is a section of the menu like any other here, so it is set
+   at full length rather than in the short form the masthead uses. */
+const links = [
+    { href: "/about", label: text(settings?.navAbout) },
+    { href: "/services", label: text(settings?.navServices) },
+    { href: "/contact", label: text(settings?.navContact) },
+    { href: "/contact", label: text(settings?.navBook) },
+];
+
+const path = toRoutePath(Astro.url).replace(/\/+$/, "") || "/";
+const email = text(settings?.email);
+---
+
+{
+    /* `inert` until it is opened: the sheet stays in the document so it can be
+       animated, and nothing inside it is reachable by tab or read out while it
+       is hidden. The script takes the attribute off on open and puts it back
+       when the fade has landed. */
+}
+<div
+    id="site-menu"
+    class="site-menu fixed inset-0 z-60 flex flex-col bg-cream px-gutter pt-gutter pb-gutter md:hidden"
+    inert
+>
+    {
+        /* Mirrors the header's own row exactly — same height, same absolutely
+           centred glyph — so the two do not shift against each other as the
+           sheet fades in over the masthead. */
+    }
+    <div class="relative flex h-mark-block items-start justify-between">
+        <button type="button" data-menu-close class="rule-link text-label uppercase">
+            {text(settings?.navClose)}
+        </button>
+
+        <a
+            href={localizePath("/", lang)}
+            aria-label={text(settings?.navHome)}
+            class="absolute top-0 left-1/2 flex -translate-x-1/2 flex-col items-center"
+        >
+            <Mark class="h-mark w-auto text-ink" />
+            <span class="mt-[0.875rem] text-label leading-[0.9] uppercase">Wuzima</span>
+        </a>
+    </div>
+
+    {
+        /* The sections as a ruled table. Every row carries its rule on top and
+           the list closes itself with one below, so the four rows sit between
+           five lines the way they are drawn — and a row added or removed in the
+           CMS cannot leave the block open at either end. */
+    }
+    <nav class="mt-u2" aria-label={text(settings?.menuLabel)}>
+        <ul class="border-b border-ink/40">
+            {
+                links.map(({ href, label }) => (
+                    <li class="border-t border-ink/40">
+                        <a
+                            href={localizePath(href, lang)}
+                            aria-current={path === href ? "page" : undefined}
+                            class="block py-5 text-base leading-[0.9] tracking-[0.02em] uppercase"
+                            data-menu-row
+                        >
+                            {label}
+                        </a>
+                    </li>
+                ))
+            }
+        </ul>
+    </nav>
+
+    {
+        /* The language pair and the address hold the foot of the sheet. They
+           are the two things the masthead gave up to make room for the button,
+           so this is where they go. */
+    }
+    <div class="mt-auto flex items-baseline justify-between text-label uppercase">
+        <LanguageSwitcher />
+        <RuleLink href={`mailto:${email}`} class="text-label uppercase">{email}</RuleLink>
+    </div>
+</div>
+
+<script>
+    import gsap from "gsap";
+
+    /* Astro hoists this once for the whole site; the view transition swaps the
+       body under it, so everything binds on `astro:page-load` against whichever
+       sheet has just arrived. Nothing needs unbinding — the elements the
+       listeners sat on are gone with the old document. */
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    /* Matches the `md:hidden` on the sheet itself. A window dragged past that
+       width has the sections back in the masthead, so an open sheet has to shut
+       rather than sit over a header that already lists everything on it. */
+    const wide = window.matchMedia("(min-width: 48rem)");
+
+    function bindMenu() {
+        const menu = document.querySelector<HTMLElement>("#site-menu");
+        const opener = document.querySelector<HTMLButtonElement>("[data-menu-open]");
+        if (!menu || !opener) return;
+
+        const closer = menu.querySelector<HTMLButtonElement>("[data-menu-close]");
+        const rows = gsap.utils.toArray<HTMLElement>("[data-menu-row]", menu);
+
+        let open = false;
+        let tween: gsap.core.Timeline | undefined;
+        const duration = (seconds: number) => (reduceMotion.matches ? 0 : seconds);
+
+        /* Lenis keeps scrolling the page behind a fixed overlay, so it is
+           stopped rather than merely covered. The layout hands its instance out
+           on `window`; where reduced motion is asked for there is no instance
+           and the overflow lock below is the whole of it. */
+        const lockScroll = (locked: boolean) => {
+            document.documentElement.style.overflow = locked ? "hidden" : "";
+            const lenis = window.__lenis;
+            if (locked) lenis?.stop();
+            else lenis?.start();
+        };
+
+        const show = () => {
+            if (open) return;
+            open = true;
+
+            menu.removeAttribute("inert");
+            opener.setAttribute("aria-expanded", "true");
+            lockScroll(true);
+
+            /* Shown before anything is tweened, and before focus is moved: an
+               element that is still `visibility: hidden` cannot take focus, and
+               a `.set()` at the head of the timeline would not have run yet. */
+            tween?.kill();
+            gsap.set(menu, { visibility: "visible" });
+            closer?.focus();
+
+            tween = gsap
+                .timeline()
+                .to(menu, { opacity: 1, duration: duration(0.3), ease: "power2.out" })
+                .from(
+                    rows,
+                    {
+                        yPercent: 40,
+                        opacity: 0,
+                        duration: duration(0.5),
+                        ease: "power3.out",
+                        stagger: 0.05,
+                    },
+                    duration(0.1),
+                );
+        };
+
+        const hide = ({ restoreFocus = true } = {}) => {
+            if (!open) return;
+            open = false;
+
+            menu.setAttribute("inert", "");
+            opener.setAttribute("aria-expanded", "false");
+            lockScroll(false);
+
+            /* Focus is moved out before `inert` can strand it on an element
+               that is about to stop being reachable. */
+            if (restoreFocus) opener.focus();
+
+            tween?.kill();
+            tween = gsap
+                .timeline()
+                .to(menu, { opacity: 0, duration: duration(0.22), ease: "power2.in" })
+                .set(menu, { visibility: "hidden" })
+                .set(rows, { clearProps: "all" });
+        };
+
+        opener.setAttribute("aria-expanded", "false");
+        opener.addEventListener("click", show);
+        closer?.addEventListener("click", () => hide());
+
+        /* A link inside the sheet navigates, and the view transition replaces
+           the document with one whose sheet is closed — but the scroll lock and
+           Lenis live on the window and survive that swap, so they are handed
+           back before the page goes. */
+        document.addEventListener("astro:before-swap", () => hide({ restoreFocus: false }), {
+            once: true,
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (!open) return;
+
+            if (event.key === "Escape") {
+                hide();
+                return;
+            }
+
+            /* The sheet covers the page but does not take it out of the tab
+               order, so the ring is closed by hand at both ends. */
+            if (event.key !== "Tab") return;
+
+            const focusable = menu.querySelectorAll<HTMLElement>(
+                'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+            );
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (!first || !last) return;
+
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        });
+
+        wide.addEventListener("change", (event) => event.matches && hide());
+    }
+
+    document.addEventListener("astro:page-load", bindMenu);
+</script>

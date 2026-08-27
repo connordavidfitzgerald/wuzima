@@ -1,0 +1,120 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+import RuleLink from "../../components/RuleLink.astro";
+import ParallaxImage from "../../components/ParallaxImage.astro";
+import { localePaths, localizePath, type Lang } from "../../i18n";
+import { getContent, paragraphs, text } from "../../lib/content";
+
+export const getStaticPaths = localePaths;
+
+const { lang } = Astro.props as { lang: Lang };
+const { about } = await getContent(lang);
+---
+
+<Layout title={text(about?.seo?.title)} description={text(about?.seo?.description)}>
+    <Header />
+
+    <main class="relative z-10 flex flex-col bg-cream px-gutter pb-u2">
+        <h1 data-reveal class="mx-auto mt-u2 max-w-[38ch] text-center text-display2 uppercase">
+            {text(about?.heading)}
+        </h1>
+
+        {
+            /* Opening spread. The tall photograph on the left runs past the
+            paragraph beside it, and the second photograph drops a long way
+            below — eight gutters, four at md — so the two overlap rather than
+            sitting on a shared baseline. Both are placed on the same grid,
+            which is what keeps that offset from drifting as the page narrows.
+            The grid is taken at md rather than lg: the columns widen to 5 and 5
+            there instead of 4 and 4, so the tablet reads as the same spread
+            rather than a single column flushed to the left margin. */
+        }
+        <div class="mt-u4 grid grid-cols-4 gap-5 md:grid-10 md:gap-y-u4 lg:gap-y-u8">
+            <ParallaxImage
+                image={about?.kitchen}
+                widths={[524, 1048]}
+                sizes="(min-width: 1024px) 28vw, 34rem"
+                class="aspect-[520/728] w-full col-span-3 md:col-span-5 md:col-start-1 md:row-span-2 md:row-start-1 md:max-w-none md:self-start lg:col-span-4 lg:col-start-1 lg:max-w-none lg:self-start xl:col-span-3 xl:col-start-2"
+            />
+
+            <p
+                class="mt-u2 max-w-[60ch] text-body
+               col-span-2 md:col-span-5 md:col-start-6 md:row-start-1 md:mt-0 md:max-w-none lg:col-span-4 lg:col-start-5 xl:col-span-3"
+            >
+                {text(about?.intro)}
+            </p>
+
+            <ParallaxImage
+                image={about?.plate}
+                widths={[336, 672]}
+                sizes="(min-width: 1024px) 18vw, 26rem"
+                class="mt-u2 aspect-[336/461] w-full col-span-2 md:col-span-4 md:col-start-6 md:row-start-2 md:mt-0 md:max-w-none lg:col-span-3 lg:col-start-5 xl:col-span-2"
+            />
+
+            <p
+                class="mt-u2 col-span-2 md:col-span-10 md:col-start-1 md:row-start-3 md:mt-0 md:text-right lg:col-span-2 lg:col-start-9 lg:row-start-2 lg:text-left"
+            >
+                <RuleLink
+                    href={localizePath("/services", lang)}
+                    class="text-copy uppercase tracking-[0.02em]"
+                >
+                    {text(about?.servicesCta)}
+                </RuleLink>
+            </p>
+        </div>
+
+        <h2 data-reveal class="mx-auto mt-u4 max-w-[38ch] text-center text-display2 uppercase">
+            {text(about?.impactHeading)}
+        </h2>
+
+        {
+            /* Closing spread. The copy steps in by one column between the first
+            block and the second, and the photograph holds the right four
+            columns for the whole height of that stack. */
+        }
+        <div class="mt-u4 md:grid-10 grid gap-5 grid-cols-4">
+            {
+                /* The copy holds four columns and steps in by one between the
+                first block and the second. It runs on its own four-column
+                subgrid — a column there is the same width as a column on the
+                page — rather than on the page grid, so the photograph beside it
+                cannot stretch the gaps between the blocks apart. */
+            }
+            <div
+                class="col-span-2 md:col-span-6 md:col-start-1 md:self-start lg:col-span-5 lg:col-start-2 lg:grid lg:grid-cols-4 lg:gap-x-gutter lg:gap-y-u2 xl:col-start-2 xl:col-span-4"
+            >
+                <div class="space-y-[1.2em] text-body lg:col-span-3 lg:col-start-1 lg:max-w-none">
+                    {paragraphs(about?.partners).map((paragraph) => <p>{paragraph}</p>)}
+                </div>
+
+                <div
+                    class="mt-u2 max-w-[60ch] space-y-[1.2em] text-body lg:col-span-3 lg:col-start-2 lg:mt-0 lg:max-w-none"
+                >
+                    {paragraphs(about?.transformation).map((paragraph) => <p>{paragraph}</p>)}
+                </div>
+
+                <p class="mt-u2 lg:col-span-3 lg:col-start-2 lg:mt-0">
+                    <RuleLink
+                        href={localizePath("/contact", lang)}
+                        class="text-copy uppercase tracking-[0.02em]"
+                    >
+                        {text(about?.cta)}
+                    </RuleLink>
+                </p>
+            </div>
+
+            <ParallaxImage
+                image={about?.plating}
+                widths={[712, 1424]}
+                sizes="(min-width: 1024px) 38vw, 34rem"
+                class="mt-u2 aspect-[712/993] w-full col-span-2 md:col-span-4 md:col-start-7 md:mt-0 md:max-w-none md:self-start lg:col-span-4 lg:col-start-7"
+            />
+        </div>
+    </main>
+
+    {/* Transparent tail that scrolls the fixed footer into view. */}
+    <div class="h-footer pointer-events-none" aria-hidden="true"></div>
+    <Footer />
+</Layout>

@@ -1,19 +1,29 @@
 ---
 import Mark from "./Mark.astro";
 import RuleLink from "./RuleLink.astro";
+import { getLangFromUrl } from "../i18n";
+import { getContent, text } from "../lib/content";
+
+const { settings } = await getContent(getLangFromUrl(Astro.url));
+
+const email = text(settings?.email);
 ---
 
-<footer class="fixed inset-x-0 bottom-0 z-0 h-footer bg-olive px-5 py-5 text-cream">
-  <Mark class="h-[4.25rem] w-12 text-cream" />
+<footer
+    class="fixed inset-x-0 bottom-0 z-0 h-footer bg-olive px-gutter py-gutter text-cream flex flex-col justify-between"
+>
+    <Mark class="h-[4.25rem] w-12 text-cream" />
 
-  <div class="mt-10 flex items-center justify-between text-[11px] leading-[1.1] tracking-[0.02em] uppercase md:text-xs">
-    <RuleLink href="mailto:info@wuzima.ca">info@wuzima.ca</RuleLink>
-    <RuleLink
-      href="https://instagram.com/wuzima_inc"
-      target="_blank"
-      rel="noreferrer"
+    <div
+        class="flex items-center justify-between leading-[1.1] tracking-[0.02em] uppercase text-label"
     >
-      @wuzima_inc
-    </RuleLink>
-  </div>
+        <RuleLink href={`mailto:${email}`}>{email}</RuleLink>
+        {
+            settings?.instagramUrl && (
+                <RuleLink href={settings.instagramUrl} target="_blank" rel="noreferrer">
+                    {text(settings.instagramHandle)}
+                </RuleLink>
+            )
+        }
+    </div>
 </footer>

@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
-/* Bradford Mono LL is a licensed face — drop the woff2 files into
-   public/fonts/ and these @font-face rules pick them up. Until then the
-   stack falls through to the system monospace. */
+/* Bradford Mono LL is a licensed face — drop the files into public/fonts/ and
+   this rule picks them up. Until then the stack falls through to the system
+   monospace, which shares the fixed advance width the layout is measured in. */
 @font-face {
     font-family: "Bradford Mono LL";
     src: url("/fonts/BradfordMonoLL-Regular.otf") format("opentype");
@@ -17,56 +17,260 @@
     --color-saffron: #feb900;
     --color-ink: #000000;
 
+    --font-mono: "Bradford Mono LL", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+    /* ---- Grid ------------------------------------------------------------
+       Ten columns, with the page margin and the gutter set to the same value
+       so the outer edge and the inner rhythm narrow together. 40px at the 1920
+       artboard, 20px at 960 and below. A column is therefore
+       (100% - 2×margin - 9×gutter) / 10 and never has to be written out. */
+    --spacing-gutter: clamp(1.25rem, 2.0833vw, 2.5rem);
+
+    /* ---- Vertical rhythm -------------------------------------------------
+       Everything in the design is spaced a multiple of the gutter apart, so
+       the steps below are 40 / 80 / 120 / 160 / 320 at artboard width and
+       shrink on the same curve as the margins. */
+    --spacing-u1: clamp(1.25rem, 2.0833vw, 2.5rem);
+    --spacing-u2: clamp(2.5rem, 4.1667vw, 5rem);
+    --spacing-u3: clamp(3.75rem, 6.25vw, 7.5rem);
+    --spacing-u4: clamp(5rem, 8.3333vw, 10rem);
+    --spacing-u8: clamp(10rem, 16.6667vw, 20rem);
+
+    /* ---- Masthead --------------------------------------------------------
+       The glyph sets the height of the header block; the wordmark hangs 14px
+       under it. Both halves live here so a page never has to add them up. */
+    --spacing-mark: clamp(2.75rem, 3.2292vw, 3.875rem);
+    --spacing-mark-block: calc(var(--spacing-mark) + 0.875rem + 0.675rem);
+    --spacing-header: calc(var(--spacing-gutter) + var(--spacing-mark-block));
+
     /* Height of the fixed footer. Drives both the footer itself and the
        transparent spacer that reveals it, so the two cannot drift. */
-    --spacing-footer: 161px;
+    --spacing-footer: 240px;
 
-    --font-mono: "Bradford Mono LL", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    /* ---- Type ------------------------------------------------------------
+       Each ramp is interpolated linearly between a 375px and a 1920px
+       viewport, so it hits its drawn size at artboard width and shrinks
+       smoothly below it rather than sitting flat on the clamp floor. */
+
+    /* 88 → 64 at the top of the range. The floor has to sit well below 64px
+       or a single long word — EXPERIENCES, MEANINGFUL — is wider than a phone
+       and bleeds the page sideways; the vw term is untouched, so every
+       viewport from about 1030px up is unaffected. */
+    --text-display: clamp(2.25rem, 3.5vw, 5.5rem);
+    --text-display--line-height: 1;
+    --text-display--letter-spacing: 0.02em;
+
+    /* Same reasoning as above: at the 40px floor, COLLABORATIONS overran its
+       four-column block on a tablet. 48px at the 1920 artboard either way. */
+    --text-display2: clamp(1.75rem, 2.5vw, 4.5rem);
+    --text-display2--line-height: 1;
+    --text-display2--letter-spacing: 0.02em;
+
+    /* 16 → 14 */
+    --text-body: clamp(0.875rem, 1vw, 1rem);
+    --text-body--line-height: 1.2;
+
+    /* 14 → 13 */
+    --text-copy: clamp(0.8125rem, 0.7973rem + 0.0647vw, 0.875rem);
+    --text-copy--line-height: 1.2;
+    --text-copy--letter-spacing: -0.01em;
+
+    /* 12 → 11 */
+    --text-label: clamp(0.6875rem, 0.6723rem + 0.0647vw, 0.75rem);
+    --text-label--line-height: 1.3;
+    --text-label--letter-spacing: 0.02em;
 }
 
 html {
     -webkit-font-smoothing: antialiased;
 }
 
-/* Text links underline themselves with the ornamental rule. GSAP drives the
-   left-to-right wipe on hover (see RuleLink.astro); this only lays the svg out
-   and hides it until the script takes over, so it cannot flash in on load. */
-.rule-link {
-    position: relative;
-    display: inline-block;
+/* The display ramp's floor is drawn at 40px, which is the right size for the
+   tablet end of it and too big for a phone: at 393px the home page's heading
+   breaks over three lines where it is drawn over two, and a single long word —
+   EXPERIENCES, MEANINGFUL — is wider than the page. Below sm it is held at the
+   30px the phone artboards are drawn at. Nothing at or above 640px is touched,
+   so the ramp itself stays exactly as it is set in @theme. */
+@media (width < 40rem) {
+    :root {
+        --text-display: 1.875rem;
+    }
 }
 
-.rule-link__mark {
-    position: absolute;
-    top: 1.25em;
-    left: 0;
-    width: 100%;
-    height: auto;
-    pointer-events: none;
-    clip-path: inset(0% 100% 0% 0%);
+/* The ten-column field. Applied to any block that places children on the
+   grid; the page margin comes from `px-gutter` on the container. Declared as a
+   utility rather than a plain class so it can be taken at a breakpoint —
+   `md:grid-10` is how every page stacks below the grid and adopts it above. */
+@utility grid-10 {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    column-gap: var(--spacing-gutter);
 }
 
-/* Offerings accordion. The plus/minus marks are swapped from CSS so the state
-   stays correct with JS disabled. `is-closing` flips them back at the start of
-   the collapse rather than at the end, since <details> stays open until the
-   tween lands. */
-.accordion__summary {
-    list-style: none;
+/* Component classes live in Tailwind's `components` layer so a utility set
+   on the same element still wins — unlayered rules outrank every layer, which
+   made `hidden md:block` on a .rule-link do nothing. */
+@layer components {
+    /* Text links underline themselves with the ornamental rule. GSAP drives the
+       left-to-right wipe on hover (see RuleLink.astro); this only lays the svg out
+       and hides it until the script takes over, so it cannot flash in on load. */
+    .rule-link {
+        position: relative;
+        display: inline-block;
+    }
+
+    /* The current page's nav link keeps its rule drawn. The hover script skips
+       these so nothing can wipe it away again. */
+    .rule-link--active .rule-link__mark {
+        clip-path: inset(0% 0% 0% 0%) !important;
+    }
+
+    .rule-link__mark {
+        position: absolute;
+        top: 1.25em;
+        left: 0;
+        width: 100%;
+        height: auto;
+        pointer-events: none;
+        clip-path: inset(0% 100% 0% 0%);
+    }
+
+    /* The same rule drawn statically under a word inside display type. It is
+       not a link, so nothing wipes it in — it is simply there.
+
+       Two things differ from .rule-link__mark. The stroke weight is set here
+       and the drawing is stretched to the word (see Rule.astro's
+       preserveAspectRatio prop) rather than scaled to it: scaled, an 88px
+       heading word would carry a 20px slab, since the svg's height follows its
+       width. And the offset is much tighter, because display type is set at a
+       line height of 1 where the label sizes are at 1.3. */
+    .rule-accent {
+        position: relative;
+        display: inline-block;
+    }
+
+    .rule-accent__mark {
+        position: absolute;
+        top: 0.98em;
+        left: 0;
+        width: 100%;
+        height: 0.1em;
+        pointer-events: none;
+    }
+
+    /* Form fields are a label over a rule, with the input filling the 40px
+       between them. Autofill would otherwise paint its own background over the
+       cream and break the drawn hairline. */
+    .field__input {
+        appearance: none;
+        background: transparent;
+    }
+
+    .field__input:-webkit-autofill,
+    .field__input:-webkit-autofill:focus {
+        -webkit-text-fill-color: var(--color-ink);
+        box-shadow: 0 0 0 1000px var(--color-cream) inset;
+    }
+
+    /* Offerings accordion. The plus/minus marks are swapped from CSS so the state
+       stays correct with JS disabled. `is-closing` flips them back at the start of
+       the collapse rather than at the end, since <details> stays open until the
+       tween lands. */
+    .accordion__summary {
+        list-style: none;
+    }
+
+    .accordion__summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .accordion__mark-minus,
+    .accordion[open]:not(.is-closing) .accordion__mark-plus {
+        opacity: 0;
+    }
+
+    .accordion[open]:not(.is-closing) .accordion__mark-minus {
+        opacity: 1;
+    }
+
+    .accordion__panel {
+        overflow: hidden;
+    }
+
+    /* The phone menu sheet, at rest. It stays in the document so it can be
+       faded rather than swapped in, so it has to be taken out of the page by
+       hand: `visibility` keeps it off the screen and out of the accessibility
+       tree, and `inert` in the markup keeps the tab order out of it. GSAP
+       writes both back on open — see MobileMenu.astro. */
+    .site-menu {
+        opacity: 0;
+        visibility: hidden;
+    }
 }
 
-.accordion__summary::-webkit-details-marker {
-    display: none;
+/* ---- Page transition -----------------------------------------------------
+   One page dissolves into the next rather than blinking through white. The
+   outgoing document lifts a few pixels as it goes and the incoming one settles
+   the same distance down, so the swap reads as a single movement instead of
+   two crossfades; the incoming half is held back a moment so the two are not
+   simply fighting over the same frames.
+
+   `mix-blend-mode: normal` is deliberate. The browser blends the two snapshots
+   with `plus-lighter` by default, which is right for a crossfade between
+   identical grounds and wrong here — the cream would wash out to white through
+   the middle of the transition. */
+@media (prefers-reduced-motion: no-preference) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        mix-blend-mode: normal;
+    }
+
+    ::view-transition-old(root) {
+        animation: page-leave 0.4s cubic-bezier(0.4, 0, 1, 1) both;
+    }
+
+    ::view-transition-new(root) {
+        animation: page-enter 0.6s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
 }
 
-.accordion__mark-minus,
-.accordion[open]:not(.is-closing) .accordion__mark-plus {
-    opacity: 0;
+@keyframes page-leave {
+    to {
+        opacity: 0;
+        transform: translateY(-0.5rem);
+    }
 }
 
-.accordion[open]:not(.is-closing) .accordion__mark-minus {
-    opacity: 1;
+@keyframes page-enter {
+    from {
+        opacity: 0;
+        transform: translateY(0.75rem);
+    }
 }
 
-.accordion__panel {
-    overflow: hidden;
+/* ---- Heading reveal ------------------------------------------------------
+   Display headings rise into place from behind their own baseline, a line at a
+   time. SplitText cuts the heading into lines and clones each one into a
+   clipping wrapper (see the layout's script); nothing here has to know how many
+   lines a translated heading ended up on.
+
+   The heading is hidden until that split has run — lines cannot be masked
+   before they exist, and unmasked type would otherwise flash at full height
+   first. `<noscript>` in the layout hands it back where the script will never
+   arrive to do it. */
+@media (prefers-reduced-motion: no-preference) {
+    [data-reveal] {
+        visibility: hidden;
+    }
+}
+
+/* The home page's ornamental rule hangs just below the line box of the word it
+   underscores, so a mask cut to the line box alone would shear it off. The
+   wrapper is opened up by that much and the line starts from correspondingly
+   further down (`yPercent: 115`) so nothing shows through the extra room; the
+   negative margin hands the space straight back, leaving line spacing as it
+   was. */
+.reveal__line-mask {
+    padding-bottom: 0.15em;
+    margin-bottom: -0.15em;
 }
