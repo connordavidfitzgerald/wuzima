@@ -127,9 +127,13 @@ const {
                keeps its exact height either way, since the wrapper is a clone
                of the line it holds.
 
-               `yPercent: 115` rather than 100 because the wrapper is opened up
-               below the line box to clear the ornamental rule — see the note on
-               .reveal__line-mask in global.css. */
+               `yPercent: 130` rather than 100 because the wrapper is opened up
+               by 0.15em on each side of the line box — below it to clear the
+               ornamental rule, above it to clear an uppercase accent (see the
+               note on .reveal__line-mask in global.css). A line waiting its
+               turn has to be carried past the whole of that, or the tips of its
+               É and À sit in the open room above the mask, on the page before
+               the rest of the word has arrived. */
             let context: gsap.Context | undefined;
             let splits: SplitText[] = [];
 
@@ -162,7 +166,7 @@ const {
                                     if (played.has(heading)) return;
 
                                     return gsap.from(self.lines, {
-                                        yPercent: 115,
+                                        yPercent: 130,
                                         duration: 0.9,
                                         ease: "power3.out",
                                         stagger: 0.08,

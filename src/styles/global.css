@@ -264,13 +264,23 @@ html {
     }
 }
 
-/* The home page's ornamental rule hangs just below the line box of the word it
-   underscores, so a mask cut to the line box alone would shear it off. The
-   wrapper is opened up by that much and the line starts from correspondingly
-   further down (`yPercent: 115`) so nothing shows through the extra room; the
-   negative margin hands the space straight back, leaving line spacing as it
-   was. */
+/* The display ramp is set at a line-height of 1, so the line box is the em and
+   nothing else: at Bradford Mono's metrics an uppercase accent — É, È, Ê, À —
+   reaches about 0.03em above that box, and a mask cut to the box alone shaves
+   the tip off it.
+
+   Below the line, the home page's ornamental rule hangs just under the line box
+   of the word it underscores, and a mask cut that close shears it off the same
+   way.
+
+   So the wrapper is opened up by 0.15em on each side — enough for the rule
+   below, and for the accents of the fallback faces as well as this one above —
+   and the line starts from correspondingly further down (`yPercent: 130`) so
+   nothing shows through the extra room before its turn. Both negative margins
+   hand the space straight back, leaving line spacing as it was. */
 .reveal__line-mask {
+    padding-top: 0.15em;
+    margin-top: -0.15em;
     padding-bottom: 0.15em;
     margin-bottom: -0.15em;
 }
