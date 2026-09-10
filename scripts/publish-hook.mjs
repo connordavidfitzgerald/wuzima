@@ -21,9 +21,10 @@ const NAME = "Rebuild the site";
 const PROJECT_ID = "n786oraf";
 const DATASET = "production";
 
-/* Every published document, and nothing else. Drafts are filtered out — the
-   site never shows them, so a keystroke in the Studio must not start a build. */
-const FILTER = `!(_id in path("drafts.**"))`;
+/* Sanity's own bookkeeping documents — an image asset among them — are not
+   copy, and an upload is always followed by the publish that uses it. That
+   publish is what should start the build. */
+const FILTER = `!(_type match "sanity.*")`;
 
 const url = process.argv[2];
 
@@ -48,7 +49,7 @@ const api = (path, method, body) =>
                 "-X",
                 method,
                 "--api-version",
-                "v2021-10-04",
+                "v2025-02-19",
                 ...(body ? ["--input", "-", "-H", "Content-Type: application/json"] : []),
             ],
             {
@@ -60,25 +61,37 @@ const api = (path, method, body) =>
     );
 
 const hook = {
+    /* A document webhook: one delivery per published document, and a GROQ
+       filter to say which ones count. */
+    type: "document",
     name: NAME,
     description: "A publish rebuilds wuzima.ca. See scripts/publish-hook.mjs.",
     url,
     dataset: DATASET,
-    on: ["create", "update", "delete"],
-    filter: FILTER,
-    /* Vercel's deploy hook wants nothing but the request itself. */
-    projection: "{}",
-    httpMethod: "POST",
+    rule: {
+        on: ["create", "update", "delete"],
+        filter: FILTER,
+        /* Vercel's deploy hook reads nothing from the body. */
+        projection: "{}",
+    },
     apiVersion: "v2021-03-25",
+    httpMethod: "POST",
+    /* Drafts and unpublished versions never reach the site, so they must not
+       start a build. This is the half of it that a filter cannot express. */
     includeDrafts: false,
-    isDisabled: false,
+    includeAllVersions: false,
+    isDisabledByUser: false,
 };
 
 const hooks = `hooks/projects/${PROJECT_ID}`;
 const existing = api(hooks, "GET").find((h) => h.name === NAME);
 
+/* A webhook's type is fixed once it is made, so an update sends everything but
+   that. */
+const { type: _type, ...changes } = hook;
+
 const saved = existing
-    ? api(`${hooks}/${existing.id}`, "PUT", hook)
+    ? api(`${hooks}/${existing.id}`, "PATCH", changes)
     : api(hooks, "POST", hook);
 
 console.log(`${existing ? "Updated" : "Created"} webhook "${saved.name}" (${saved.id}).`);

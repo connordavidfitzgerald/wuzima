@@ -73,9 +73,11 @@ The wiring is two pieces, set up once:
    node scripts/publish-hook.mjs https://api.vercel.com/v1/integrations/deploy/…
    ```
 
-   The script creates the webhook (or updates the one it made before), filtered
-   to published documents so a draft keystroke never starts a build. It signs in
-   with the Sanity CLI session, so run `npx sanity login` first if it complains.
+   The script creates the webhook, or updates the one it made before, so it is
+   safe to re-run when the deploy hook is rotated. It listens for published
+   documents only — drafts and bare asset uploads are ignored, so a keystroke in
+   the Studio never starts a build. Authentication is the Sanity CLI session;
+   run `npx sanity login` first if it complains.
 
 `npx sanity hooks list` shows what is registered, and `npx sanity hooks logs`
 shows what each publish actually sent — the first place to look if a change is
