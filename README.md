@@ -31,8 +31,9 @@ column runs, where a spread breaks — all of that stays in the pages. What is
 authored about a photograph is the photograph, its alternative text, and (on the
 services page) whether it is cropped portrait or square.
 
-The site is built statically, so **published changes appear on the next deploy**,
-not immediately.
+The site is built statically, but a publish does not wait for the next code
+change: Sanity calls a Vercel deploy hook whenever a document is published, and
+**the change is live a minute or so later**. See [Publishing](#publishing).
 
 ## Running it
 
@@ -52,6 +53,33 @@ PUBLIC_SANITY_DATASET=production
 
 Both are public — the dataset is readable without a token — and both have to be
 set on Vercel too, or a deploy builds a site with no copy in it.
+
+## Publishing
+
+Pressing Publish in the Studio is the whole of it. A Sanity webhook fires at
+every published change and calls a Vercel deploy hook, which runs `astro build`
+against the live API — no CDN cache in front of it, so the build reads exactly
+what was just published. The site stays static and served from the edge; nobody
+has to touch Git to change a word.
+
+The wiring is two pieces, set up once:
+
+1. In Vercel, **Settings → Git → Deploy Hooks**, make a hook on the production
+   branch and copy its URL. Treat it as a secret — it starts a build for anyone
+   who has it.
+2. Point Sanity at it:
+
+   ```sh
+   node scripts/publish-hook.mjs https://api.vercel.com/v1/integrations/deploy/…
+   ```
+
+   The script creates the webhook (or updates the one it made before), filtered
+   to published documents so a draft keystroke never starts a build. It signs in
+   with the Sanity CLI session, so run `npx sanity login` first if it complains.
+
+`npx sanity hooks list` shows what is registered, and `npx sanity hooks logs`
+shows what each publish actually sent — the first place to look if a change is
+not appearing.
 
 ## Filling a fresh dataset
 

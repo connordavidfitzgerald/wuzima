@@ -25,9 +25,10 @@ export default defineConfig({
       projectId: PUBLIC_SANITY_PROJECT_ID,
       dataset: PUBLIC_SANITY_DATASET,
       apiVersion: "2026-08-01",
-      // Content is baked in at build time, so read straight from the API and
-      // never from a CDN cache that may be a minute behind the last publish.
-      useCdn: true,
+      // Content is baked in at build time, and the build is kicked off by the
+      // publish itself, so read straight from the API and never from a CDN
+      // cache that may still be a minute behind that publish.
+      useCdn: false,
       // Serves the Studio from this same deploy, at wuzima.ca/admin.
       studioBasePath: "/admin",
     }),
